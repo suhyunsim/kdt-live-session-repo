@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public class OrderJdbcRepository implements OrderRepository {
 
+    private static final String INSERT_SQL = "INSERT INTO order_items(order_id, product_id, category, price, quantity, created_at, updated_at) " +
+            "VALUES (UUID_TO_BIN(:orderId), UUID_TO_BIN(:productId), :category, :price, :quantity, :createdAt, :updatedAt)";
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public OrderJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -27,8 +29,7 @@ public class OrderJdbcRepository implements OrderRepository {
                         "VALUES (UUID_TO_BIN(:orderId), :email, :address, :postcode, :orderStatus, :createdAt, :updatedAt)",
                 toOrderParamMap(order));
         order.getOrderItems()
-                .forEach(item -> jdbcTemplate.update("INSERT INTO order_items(order_id, product_id, category, price, quantity, created_at, updated_at) " +
-                                "VALUES (UUID_TO_BIN(:orderId), UUID_TO_BIN(:productId), :category, :price, :quantity, :createdAt, :updatedAt)",
+                .forEach(item -> jdbcTemplate.update(INSERT_SQL,
                         toOrderItemParamMap(order.getOrderId(), order.getCreatedAt(), order.getUpdatedAt(), item)));
         return order;
     }
