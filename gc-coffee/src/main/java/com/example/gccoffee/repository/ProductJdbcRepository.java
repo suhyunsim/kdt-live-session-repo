@@ -26,8 +26,16 @@ public class ProductJdbcRepository implements ProductRepository {
         return new Product(productId, productName, category, price, description, createdAt, updatedAt);
     };
 
-    private static final String INSERT_SQL = "INSERT INTO products(product_id, product_name, category, price, description, created_at, updated_at) VALUES (UUID_TO_BIN(:productId), :productName, :category, :price, :description, :createdAt, :updatedAt)";
+    private static final String INSERT_SQL = "INSERT INTO products(product_id, product_name, category, price, description, created_at, updated_at) " +
+            "VALUES (UUID_TO_BIN(:productId), :productName, :category, :price, :description, :createdAt, :updatedAt)";
     private static final String SELECT_ALL_SQL = "SELECT * FROM products";
+    private static final String UPDATE_SQL = "UPDATE products SET product_name = :productName, category = :category, price = :price, " +
+            "description = :description, created_at = :createdAt, updated_at = :updatedAt " +
+            "WHERE product_id = UUID_TO_BIN(:productId)";
+    private static final String FIND_BY_ID_SQL = "SELECT * FROM products WHERE product_id = UUID_TO_BIN(:productId)";
+    private static final String FIND_BY_NAME_SQL = "SELECT * FROM products WHERE product_name = :productName";
+    private static final String FIND_BY_CATEGORY_SQL = "SELECT * FROM products WHERE category = :category";
+    private static final String DELETE_SQL = "DELETE FROM products";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -47,10 +55,6 @@ public class ProductJdbcRepository implements ProductRepository {
         return paramMap;
     }
 
-    @Override
-    public List<Product> findAll() {
-        return jdbcTemplate.query(SELECT_ALL_SQL, productRowMapper);
-    }
 
     @Override
     public Product insert(Product product) {
@@ -63,25 +67,24 @@ public class ProductJdbcRepository implements ProductRepository {
 
     @Override
     public Product update(Product product) {
-        var update = jdbcTemplate.update(
-                "UPDATE products SET product_name = :productName, category = :category, price = :price, " +
-                        "description = :description, created_at = :createdAt, updated_at = :updatedAt " +
-                        "WHERE product_id = UUID_TO_BIN(:productId)",
-                toParamMap(product)
-        );
+        var update = jdbcTemplate.update(UPDATE_SQL, toParamMap(product));
         if (update != 1) {
             throw new RuntimeException("Nothing was updated");
         }
         return product;
     }
 
+
+    @Override
+    public List<Product> findAll() {
+        return jdbcTemplate.query(SELECT_ALL_SQL, productRowMapper);
+    }
+
     @Override
     public Optional<Product> findById(UUID productId) {
         try {
             return Optional.ofNullable(
-                    jdbcTemplate.queryForObject("SELECT * FROM products WHERE product_id = UUID_TO_BIN(:productId)",
-                            Collections.singletonMap("productId", productId.toString().getBytes()), productRowMapper)
-            );
+                    jdbcTemplate.queryForObject(FIND_BY_ID_SQL, Collections.singletonMap("productId", productId.toString().getBytes()), productRowMapper));
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
@@ -91,9 +94,7 @@ public class ProductJdbcRepository implements ProductRepository {
     public Optional<Product> findByName(String productName) {
         try {
             return Optional.ofNullable(
-                    jdbcTemplate.queryForObject("SELECT * FROM products WHERE product_name = :productName",
-                            Collections.singletonMap("productName", productName), productRowMapper)
-            );
+                    jdbcTemplate.queryForObject(FIND_BY_NAME_SQL, Collections.singletonMap("productName", productName), productRowMapper));
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
@@ -101,16 +102,12 @@ public class ProductJdbcRepository implements ProductRepository {
 
     @Override
     public List<Product> findByCategory(Category category) {
-        return jdbcTemplate.query(
-                "SELECT * FROM products WHERE category = :category",
-                Collections.singletonMap("category", category.toString()),
-                productRowMapper
-        );
+        return jdbcTemplate.query(FIND_BY_CATEGORY_SQL, Collections.singletonMap("category", category.toString()), productRowMapper);
     }
 
     @Override
     public void deleteAll() {
-        jdbcTemplate.update("DELETE FROM products", Collections.emptyMap());
+        jdbcTemplate.update(DELETE_SQL, Collections.emptyMap());
     }
 
 }
